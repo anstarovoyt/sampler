@@ -10,6 +10,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Start debuggable app with args
+ * -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7896 
+ * 
+ */
 public class EntryPoint {
 
   public static final String PORT = "7896";
