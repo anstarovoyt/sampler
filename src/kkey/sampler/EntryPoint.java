@@ -10,8 +10,7 @@ import java.util.stream.IntStream;
 
 /**
  * Start debuggable app with args
- * -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7896 
- * 
+ * -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=7896
  */
 public class EntryPoint {
 
@@ -62,18 +61,19 @@ public class EntryPoint {
     IntStream.range(0, 100).forEach(i -> {
       try {
         Thread.sleep(100);
+
+        vm.suspend();
+        for (ThreadReference threadReference : vm.allThreads()) {
+          for (StackFrame stackFrame : threadReference.frames()) {
+            Frame frame = getFrame(stackFrame.location().toString());
+            frame.counter++;
+          }
+        }
+        vm.resume();
       }
-      catch (InterruptedException e) {
+      catch (Exception e) {
         throw new RuntimeException(e);
       }
-      vm.suspend();
-      for (ThreadReference threadReference : vm.allThreads()) {
-        for (StackFrame stackFrame : threadReference.frames()) {
-          Frame frame = getFrame(stackFrame.location().toString());
-          frame.counter++;
-        }
-      }
-      vm.resume();
     });
 
     ArrayList<Frame> values = new ArrayList<>(frames.values());
