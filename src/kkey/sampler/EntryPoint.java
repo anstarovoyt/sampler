@@ -5,10 +5,8 @@ import com.sun.jdi.*;
 import com.sun.jdi.connect.AttachingConnector;
 import com.sun.jdi.connect.Connector;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Start debuggable app with args
@@ -20,8 +18,13 @@ public class EntryPoint {
   public static final String PORT = "7896";
   public static final String HOST = "127.0.0.1";
 
-  private final static class Frame implements Comparable<Frame>{
-    public String frame;
+  private final static class Frame implements Comparable<Frame> {
+
+    public Frame(String value) {
+      frame = value;
+    }
+
+    public final String frame;
     public int counter = 0;
 
     @Override
@@ -56,8 +59,13 @@ public class EntryPoint {
   }
 
   private void sampling(VirtualMachine vm) throws Exception {
-    for (int i = 0; i < 100; i++) {
-      Thread.sleep(100);
+    IntStream.range(0, 100).forEach(i -> {
+      try {
+        Thread.sleep(100);
+      }
+      catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
       vm.suspend();
       for (ThreadReference threadReference : vm.allThreads()) {
         for (StackFrame stackFrame : threadReference.frames()) {
@@ -66,33 +74,25 @@ public class EntryPoint {
         }
       }
       vm.resume();
-    }
+    });
 
     ArrayList<Frame> values = new ArrayList<>(frames.values());
     Collections.sort(values);
 
-    for (int i = 0; i < 5; i++) {
-      System.out.println(values.get(i).frame);
-    }
+    IntStream.rangeClosed(0, 5).mapToObj(i -> values.get(i).frame).forEach(System.out::println);
   }
 
   private Frame getFrame(String stringLocation) {
-    Frame frame = frames.get(stringLocation);
-    if (frame == null) {
-      frame = new Frame();
-      frame.frame = stringLocation;
-      frames.put(stringLocation, frame);
-    }
-
-    return frame;
+    return frames.computeIfAbsent(stringLocation, Frame::new);
   }
 
 
   private static AttachingConnector findConnector(VirtualMachineManager virtualMachineManager) {
-    for (AttachingConnector attachingConnector : virtualMachineManager.attachingConnectors()) {
-      if ("dt_socket".equalsIgnoreCase(attachingConnector.transport().name())) return attachingConnector;
-    }
+    Optional<AttachingConnector> first = virtualMachineManager.attachingConnectors()
+      .stream()
+      .filter(connector -> "dt_socket".equalsIgnoreCase(connector.transport().name()))
+      .findFirst();
 
-    throw new IllegalStateException("cannot find connector");
+    return first.get();
   }
 }
